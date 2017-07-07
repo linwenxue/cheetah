@@ -6,7 +6,7 @@ import org.joda.time.format.DateTimeFormat
 /**
   * Created by wenxuelin on 2017/7/6.
   */
-object TimeUtils extends Serializable{
+object TimeUtils {
   val DATE = "yyyyMMdd"
   val DATE_HH = "yyyyMMddHH"
   val DATE_TIME = "yyyyMMddHHmmss"
@@ -30,7 +30,6 @@ object TimeUtils extends Serializable{
   def format(time: String, format: String): String = {
     DateTime.parse(time, DateTimeFormat.forPattern(format)).toString(format)
   }
-
 
   /**
     * 格式化时间，返回格式化后的时间

@@ -41,14 +41,14 @@ private[cheetah] class MysqlReader(@transient val sqlContext: SQLContext, val co
         val prop = new Properties()
         val dataFrame = sqlContext.read.jdbc(url+"?user="+user+"&password="+password, table, partitionColumn,
           lowerBound, upperBound, numPartitions, prop)
-        LOG.warn(s"全量模式=>读取Mysql数据量:[${dataFrame.count()}]，数据分区数：$numPartitions")
+        LOG.warn(s"全量模式=>Mysql表${table}，读取数据量:[${dataFrame.count()}]，数据分区数：$numPartitions")
         dataFrame
       }
       case conf.EXTRACT_TYPE_INCREMENT => {
         val partition = generatePartition()
         val prop = new Properties()
         val dataFrame = sqlContext.read.jdbc(url+"?user="+user+"&password="+password, table, partition, prop)
-        LOG.warn(s"增量模式=>读取Mysql源数据分区：${partition.toList}，读取Mysql数据量:[${dataFrame.count()}]，数据分区数：${dataFrame.rdd.partitions.length}")
+        LOG.warn(s"增量模式=>Mysql表${table}，源数据分区：${partition.toList}，读取数据量:[${dataFrame.count()}]，数据分区数：${dataFrame.rdd.partitions.length}")
         dataFrame
       }
     }
