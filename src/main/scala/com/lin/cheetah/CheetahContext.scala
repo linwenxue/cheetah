@@ -8,9 +8,12 @@ import org.apache.spark.{SparkConf, SparkContext}
   * Created by wenxuelin on 2017/6/23.
   */
 private[cheetah] class CheetahContext(conf: CheetahConf) extends Serializable{
-  private lazy val sparkConf: SparkConf = new SparkConf()
-  private lazy val sc: SparkContext = new SparkContext(sparkConf)
-  private lazy val sqlContext: SQLContext = new SQLContext(sc)
+  @transient
+  private val sparkConf: SparkConf = new SparkConf()
+  @transient
+  private val sc: SparkContext = new SparkContext(sparkConf)
+  @transient
+  private val sqlContext: SQLContext = new SQLContext(sc)
   protected var reader: Reader = new MysqlReader(sqlContext, conf)
   protected var writer: Writer = new HiveWriter(sc, conf)
 

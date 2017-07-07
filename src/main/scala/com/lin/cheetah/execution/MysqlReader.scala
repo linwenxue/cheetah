@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 /**
   * Created by wenxuelin on 2017/6/22.
   */
-private[cheetah] class MysqlReader(sqlContext: SQLContext, conf: CheetahConf) extends Reader{
+private[cheetah] class MysqlReader(@transient val sqlContext: SQLContext, val conf: CheetahConf) extends Reader{
   val LOG = LoggerFactory.getLogger("MysqlReader")
   private val url = conf.getDataSourceUrl
   private val driver = conf.getDataSoureDriver

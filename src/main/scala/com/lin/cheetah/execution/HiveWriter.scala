@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory
 /**
   * Created by wenxuelin on 2017/6/23.
   */
-private[cheetah] class HiveWriter(sparkContext: SparkContext, conf: CheetahConf) extends Writer{
+private[cheetah] class HiveWriter(@transient val sparkContext: SparkContext, val conf: CheetahConf) extends Writer{
   val LOG = LoggerFactory.getLogger("HiveWriter")
 
   override def write(inputDataFrame: DataFrame): Unit = {
@@ -50,19 +50,18 @@ private[cheetah] class HiveWriter(sparkContext: SparkContext, conf: CheetahConf)
         }
         case conf.EXTRACT_TYPE_INCREMENT => {
           val partitionColumns = conf.getPartitionColumn
-          val dataFrame = hiveContext.createDataFrame(inputDataFrame.mapPartitions{
-            rows =>
-              //如果存在多个分区字段，如同时存在create_time,update_time 则以最后一个非空时间值即update_time作为分区时间
-              rows.map {
-                row =>
-                  val time = partitionColumns.split("\\|\\|").map{
-                    columnAndFormat =>
-                      val cf = columnAndFormat.split(">")
-                      TimeUtils.format(row.getAs[String](cf(0)), cf(1), TimeUtils.DATE)
-                  }.filter(x => x != null)
-                  Row((row.toSeq :+ time(time.length-1).toInt): _*)
-              }
-          }, tableSchema)
+          def partition(rows: Iterator[Row]): Iterator[Row] = {
+            rows.map {
+              row =>
+                val time = partitionColumns.split("\\|\\|").map {
+                  columnAndFormat =>
+                    val cf = columnAndFormat.split(">")
+                    TimeUtils.format(row.getAs[String](cf(0)), cf(1), TimeUtils.DATE)
+                }.filter(x => x != null)
+                Row((row.toSeq :+ time(time.length-1).toInt): _*)
+            }
+          }
+          val dataFrame = hiveContext.createDataFrame(inputDataFrame.mapPartitions(partition), tableSchema)
           val writer = dataFrame.write.format("parquet").mode(SaveMode.Append)
           writer.partitionBy("dt")
           writer.insertInto(s"${table}")
