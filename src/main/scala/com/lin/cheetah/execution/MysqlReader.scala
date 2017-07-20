@@ -18,6 +18,7 @@ private[cheetah] class MysqlReader(@transient val sqlContext: SQLContext, val co
   private val password = conf.getDataSourePassword
   private val table = conf.getDataSoureTable
   private val partitionColumn = conf.getPartitionColumn
+  private val partitionCondition = conf.getPartitionCondition
 
   /**
     * 读取mysql数据库数据
@@ -78,27 +79,33 @@ private[cheetah] class MysqlReader(@transient val sqlContext: SQLContext, val co
     * @return
     */
   def generatePartition(): Array[String] = {
-    partitionColumn.split("\\|\\|").flatMap{ columnAndFormat =>
-      val cf = columnAndFormat.split(">")
-      val column = cf(0)
-      val format = cf(1)
-      conf.get("countTime").split(",").map { time =>
-        var startHour: String = null
-        var endHour: String = null
-        format match {
-          case "ts" => {
-            startHour = TimeUtils.timestamp(time+"0000", TimeUtils.DATE_TIME).toString
-            endHour = TimeUtils.timestamp(time+"5959", TimeUtils.DATE_TIME).toString
-          }
-          case _ => {
-            //时间类型使用单引号''括起来
-            startHour = s"'${TimeUtils.format(time+"0000", TimeUtils.DATE_TIME, format)}'"
-            endHour = s"'${TimeUtils.format(time+"5959", TimeUtils.DATE_TIME, format)}'"
-          }
-        }
-        //按小时分区，默认每个小时一个分区
-        s"$column>= $startHour AND $column<=$endHour"
-      }
-    }.distinct
+    //如果设置condition自定义条件则优先使用，否则使用contTime时间
+    if(partitionCondition.isEmpty) {
+      conf.get("countTime").split(",").map {
+        time =>
+          partitionColumn.split("\\|\\|").map {
+            columnAndFormat =>
+              val cf = columnAndFormat.split(">")
+              val column = cf(0)
+              val format = cf(1)
+              var startTime: String = null
+              var endTime: String = null
+              format match {
+                case "ts" => {
+                  startTime = TimeUtils.timestamp(time+"0000", TimeUtils.DATE_TIME).toString
+                  endTime = TimeUtils.timestamp(time+"5959", TimeUtils.DATE_TIME).toString
+                }
+                case _ => {
+                  //时间类型使用单引号''括起来
+                  startTime = s"'${TimeUtils.format(time+"0000", TimeUtils.DATE_TIME, format)}'"
+                  endTime = s"'${TimeUtils.format(time+"5959", TimeUtils.DATE_TIME, format)}'"
+                }
+              }
+              s"($column>= $startTime AND $column<=$endTime)"
+          }.mkString(" OR ")
+      }.distinct
+    } else {
+      partitionCondition.split("\\|\\|")
+    }
   }
 }

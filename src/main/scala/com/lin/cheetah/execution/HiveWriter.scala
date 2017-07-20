@@ -29,15 +29,18 @@ private[cheetah] class HiveWriter(@transient val sparkContext: SparkContext, val
           case "long" => LongType
           case "double" => DoubleType
           /*
-            读取mysql的float类型spark-sql会默认转化为double,
-            所有最好hive中使用double替换float,否则存在double值精度丢失
+           * 读取mysql的float类型spark-sql会默认转化为double,
+           * 所有最好hive中使用double替换float,否则存在double值精度丢失
+           * spark还不支持decimal，所以hive中使用string来代替
            */
           case "float" => DoubleType
           case "tinyint" => IntegerType
           case "bigint" => LongType
+          case typ if(typ.toLowerCase.startsWith("decimal")) => StringType
+          //默认使用string类型
+          case _ => StringType
         }, true)))
-
-    //缓存df
+    LOG.warn(s"获取hive表schema:$tableSchema")
     inputDataFrame.persist(StorageLevel.MEMORY_AND_DISK)
     //根据抽取方式判断是否写入hive分区表
     def writeByMode(): Unit = {
@@ -56,13 +59,22 @@ private[cheetah] class HiveWriter(@transient val sparkContext: SparkContext, val
                 val time = partitionColumns.split("\\|\\|").map {
                   columnAndFormat =>
                     val cf = columnAndFormat.split(">")
-                    TimeUtils.format(row.getAs[String](cf(0)), cf(1), TimeUtils.DATE)
+                    val col = cf(0)
+                    cf(1) match {
+                      case "ts" => TimeUtils.format(row.getAs(col).toString.toLong, TimeUtils.DATE)
+                      case _ => TimeUtils.format(row.getAs(cf(0)).toString, cf(1), TimeUtils.DATE)
+                    }
                 }.filter(x => x != null)
-                Row((row.toSeq :+ time(time.length-1).toInt): _*)
+               /*
+                * 1.默认ods层hive表字段都为string类型，将数据类型全部转换为string类型，
+                *   屏蔽mysql->spark->hive的多流程处理类型转换和spark-sql支持不足的问题
+                * 2.如果有多个分区字段，默认使用最后一个字段分区值time(time.length-1)
+                */
+                Row((row.toSeq.map(x => x.toString) :+ time(time.length-1).toInt): _*)
             }
           }
           val dataFrame = hiveContext.createDataFrame(inputDataFrame.mapPartitions(partition), tableSchema)
-          val writer = dataFrame.write.format("parquet").mode(SaveMode.Append)
+          val writer = dataFrame.write.format("parquet").mode(SaveMode.Overwrite)
           writer.partitionBy("dt")
           writer.insertInto(s"${table}")
           LOG.warn(s"增量模式=>插入Hive表${table}数据量:[${dataFrame.count()}]]")

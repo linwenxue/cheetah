@@ -15,6 +15,7 @@ private[cheetah] class CheetahConf extends Serializable{
   private val DATASOURCE_TABLE = "datasource.table"
   private val DATASOURCE_EXTRACT_TYPE = "datasource.extract.type"
   private val DATASOURCE_PARTITION_COLUMN = "datasource.partition.column"
+  private val DATASOURCE_PARTITION_CONDITION = "datasource.partition.condition"
   private val DATASOURCE_PARTITION_COLUMN_LOWERBOUND = "datasource.partition.column.lowerBound"
   private val DATASOURCE_PARTITION_COLUMN_UPPERBOUND = "datasource.partition.column.upperBound"
   private val DATASOURCE_PARTITION_COLUMN_NUMPARTITIONS = "datasource.partition.column.numPartitions"
@@ -85,6 +86,8 @@ private[cheetah] class CheetahConf extends Serializable{
   def getExtractType: String = get(DATASOURCE_EXTRACT_TYPE)
 
   def getPartitionColumn: String = get(DATASOURCE_PARTITION_COLUMN)
+
+  def getPartitionCondition: String = get(DATASOURCE_PARTITION_CONDITION)
 
   def getColumnLowerBound: java.lang.Long = {
     val lower = get(DATASOURCE_PARTITION_COLUMN_LOWERBOUND)

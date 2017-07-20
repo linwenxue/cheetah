@@ -11,6 +11,13 @@ object TimeUtils {
   val DATE_HH = "yyyyMMddHH"
   val DATE_TIME = "yyyyMMddHHmmss"
 
+  def format(time: Long, format: String): String = {
+    var timestamp = time
+    if(timestamp.toString.length == 10)
+      timestamp = timestamp*1000
+    new DateTime(timestamp).toString(format)
+  }
+
   /**
     * 格式化时间，返回timestamp
     * @param time
