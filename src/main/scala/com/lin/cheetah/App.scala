@@ -24,10 +24,11 @@ private[cheetah] object App {
       }
     })
 
+    //default mysql to hive, store as parquet file
     val context = new CheetahContext(conf)
       .setAppName("测试etl数据抽取")
       .setLogLevel("WARN")
-    context.execute()
+      .execute()
     LOG.warn("程序运行时间："+(System.nanoTime()-startTime)/1000000000+"s")
   }
 }

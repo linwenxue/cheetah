@@ -1,4 +1,4 @@
-package com.lin.cheetah.execution
+package com.lin.cheetah.execution.writer
 
 import com.lin.cheetah.CheetahConf
 import com.lin.cheetah.util.TimeUtils
