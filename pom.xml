@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.lin.cheetah</groupId>
-    <artifactId>cheetah</artifactId>
+    <artifactId>cheetah-core</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
