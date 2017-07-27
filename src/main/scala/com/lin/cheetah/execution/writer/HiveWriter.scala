@@ -5,9 +5,9 @@ import com.lin.cheetah.util.TimeUtils
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.hive.HiveContext
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, Row, SaveMode}
-import org.apache.spark.storage.StorageLevel
+import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
 import org.slf4j.LoggerFactory
+
 
 /**
   * Created by wenxuelin on 2017/6/23.
@@ -37,11 +37,10 @@ private[cheetah] class HiveWriter(@transient val sparkContext: SparkContext, val
           case "tinyint" => IntegerType
           case "bigint" => LongType
           case typ if(typ.toLowerCase.startsWith("decimal")) => StringType
-          //默认使用string类型
           case _ => StringType
         }, true)))
-    LOG.warn(s"获取hive表schema:$tableSchema")
-    inputDataFrame.persist(StorageLevel.MEMORY_AND_DISK)
+    //LOG.warn(s"获取hive表schema:$tableSchema")
+
     //根据抽取方式判断是否写入hive分区表
     def writeByMode(): Unit = {
       conf.getExtractType match {
@@ -52,6 +51,7 @@ private[cheetah] class HiveWriter(@transient val sparkContext: SparkContext, val
           LOG.warn(s"全量模式=>插入Hive表${table}数据量:[${dataFrame.count()}]]")
         }
         case conf.EXTRACT_TYPE_INCREMENT => {
+          val dataFrameNum = sparkContext.accumulator(0, s"${table}数据累加器")
           val partitionColumns = conf.getPartitionColumn
           def partition(rows: Iterator[Row]): Iterator[Row] = {
             rows.map {
@@ -65,6 +65,8 @@ private[cheetah] class HiveWriter(@transient val sparkContext: SparkContext, val
                       case _ => TimeUtils.format(row.getAs(cf(0)).toString, cf(1), TimeUtils.DATE)
                     }
                 }.filter(x => x != null)
+                //累加器计数
+                dataFrameNum.add(1)
                /*
                 * 1.默认ods层hive表字段都为string类型，将数据类型全部转换为string类型，
                 *   屏蔽mysql->spark->hive的多流程处理类型转换和spark-sql支持不足的问题
@@ -77,7 +79,7 @@ private[cheetah] class HiveWriter(@transient val sparkContext: SparkContext, val
           val writer = dataFrame.write.format("parquet").mode(SaveMode.Overwrite)
           writer.partitionBy("dt")
           writer.insertInto(s"${table}")
-          LOG.warn(s"增量模式=>插入Hive表${table}数据量:[${dataFrame.count()}]]")
+          LOG.warn(s"增量模式=>插入Hive表${table}数据量:[${dataFrameNum}]")
         }
       }
     }
